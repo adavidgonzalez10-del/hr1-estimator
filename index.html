@@ -592,7 +592,7 @@
   }
 
   /* ============================================
-     EMAIL CAPTURE
+     CTA CARD
   ============================================ */
   .capture-card {
     background: white;
@@ -613,40 +613,6 @@
     color: var(--ink-muted);
     margin-bottom: 24px;
     line-height: 1.6;
-  }
-
-  .capture-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin-bottom: 20px;
-  }
-
-  .capture-fields input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    color: var(--ink);
-    background: var(--paper);
-    transition: border-color 0.15s;
-  }
-
-  .capture-fields input:focus {
-    outline: none;
-    border-color: var(--accent);
-    background: white;
-  }
-
-  .capture-fields input::placeholder { color: var(--ink-faint); }
-
-  .privacy-note {
-    font-size: 11px;
-    color: var(--ink-faint);
-    margin-top: 10px;
-    line-height: 1.5;
   }
 
   /* Thank you state */
@@ -1018,34 +984,21 @@
   </div>
 
   <!-- ============================================
-       SCREEN 3 — EMAIL CAPTURE
+       SCREEN 3 — CALENDAR CTA
   ============================================ -->
   <div class="screen" id="screen-capture">
 
     <div class="capture-card">
-      <h3>Get your detailed risk report</h3>
-      <p>We'll send a PDF summary of your plan's HR1 exposure estimate, including the full methodology and proactive outreach recommendations — no strings attached.</p>
+      <h3>See how health plans are recovering at-risk members</h3>
+      <p>Health plans using SMS-based outreach and inbound virtual agents are recovering 8–12% of members who would otherwise fall through the cracks. Book a 20-minute walkthrough to see what that looks like in practice.</p>
 
-      <div class="capture-fields">
-        <input type="text" id="captureName" placeholder="Your name">
-        <input type="text" id="captureOrg" placeholder="Health plan name">
-        <input type="email" id="captureEmail" placeholder="Work email">
+      <div class="btn-row" style="margin-top: 2rem;">
+        <a href="https://calendar.app.google/eVFEgKu6L37KNhRF8" target="_blank" class="btn-primary" style="text-decoration:none; display:inline-block;">Book a 20-minute walkthrough →</a>
       </div>
 
-      <div class="btn-row">
-        <button class="btn-primary" onclick="submitCapture()">Send my report</button>
-        <button class="btn-ghost" onclick="skipCapture()">Skip — just show results</button>
+      <div style="margin-top: 1.5rem;">
+        <button class="btn-ghost" onclick="showResults()">← Back to my results</button>
       </div>
-
-      <p class="privacy-note">Your information is used only to send this report. It will not be shared or used for marketing purposes without your consent.</p>
-    </div>
-
-    <div class="thank-you" id="thankYouState" style="display:none;">
-      <div class="thank-you-icon">✓</div>
-      <h3>Report on its way</h3>
-      <p>Thank you. Check your inbox shortly. In the meantime, you can review your full estimate on the previous screen.</p>
-      <br>
-      <button class="btn-ghost" onclick="showResults()">← Back to results</button>
     </div>
 
   </div>
@@ -1335,44 +1288,9 @@
     document.querySelector('.capture-card').style.display = 'block';
   }
 
-  function skipCapture() {
-    setProgress(2);
-    showScreen('results');
-  }
-
   function showResults() {
     setProgress(2);
     showScreen('results');
-  }
-
-  function submitCapture() {
-    const name = document.getElementById('captureName').value.trim();
-    const org = document.getElementById('captureOrg').value.trim();
-    const email = document.getElementById('captureEmail').value.trim();
-
-    if (!email || !email.includes('@')) {
-      document.getElementById('captureEmail').style.borderColor = 'var(--accent)';
-      return;
-    }
-
-    // ── MAILCHIMP INTEGRATION ──────────────────────────
-    // Replace the action URL below with your Mailchimp
-    // embedded form action URL. Find it in:
-    // Mailchimp → Audience → Signup Forms → Embedded Forms
-    //
-    // const MAILCHIMP_URL = 'https://yourlist.us1.list-manage.com/subscribe/post?u=XXXX&id=XXXX';
-    //
-    // Example fetch call (uncomment when ready):
-    // fetch(MAILCHIMP_URL + '&EMAIL=' + encodeURIComponent(email) +
-    //   '&FNAME=' + encodeURIComponent(name) +
-    //   '&MMERGE3=' + encodeURIComponent(org) +
-    //   '&STATE=' + encodeURIComponent(results.state) +
-    //   '&MEMBERS=' + results.totalMembers +
-    //   '&ATRISK=' + Math.round(results.atRisk), { mode: 'no-cors' });
-    // ─────────────────────────────────────────────────
-
-    document.querySelector('.capture-card').style.display = 'none';
-    document.getElementById('thankYouState').style.display = 'block';
   }
 
   function resetTool() {
