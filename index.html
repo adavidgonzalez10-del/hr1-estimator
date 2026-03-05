@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medicaid HR1 Risk Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================================
+     DESIGN SYSTEM
+  ============================================ */
+  :root {
+    --ink: #0f1117;
+    --ink-muted: #4a5060;
+    --ink-faint: #8892a0;
+    --paper: #f7f5f0;
+    --paper-warm: #ede9e0;
+    --accent: #c8402a;
+    --accent-light: #f5ebe8;
+    --accent-dark: #9e2f1e;
+    --ok: #2a6b3c;
+    --ok-light: #e8f2eb;
+    --warn: #b05a10;
+    --warn-light: #fdf0e6;
+    --critical: #8b1a1a;
+    --critical-light: #fdeaea;
+    --border: rgba(15,17,23,0.10);
+    --shadow: 0 2px 12px rgba(15,17,23,0.08);
+    --shadow-lg: 0 8px 40px rgba(15,17,23,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ============================================
+     LAYOUT
+  ============================================ */
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ============================================
+     HEADER
+  ============================================ */
+  .header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(28px, 5vw, 42px);
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+
+  .header h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .header-sub {
+    font-size: 15px;
+    color: var(--ink-muted);
+    max-width: 560px;
+    line-height: 1.65;
+  }
+
+  .stat-bar {
+    display: flex;
+    gap: 32px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* ============================================
+     SCREENS
+  ============================================ */
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeUp 0.3s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============================================
+     FORM
+  ============================================ */
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 20px;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 36px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: -4px;
+  }
+
+  .field input[type="number"],
+  .field select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    background: white;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a5060' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+
+  .field input:focus,
+  .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* Slider */
+  .slider-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--paper-warm);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  .slider-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 44px;
+    text-align: right;
+  }
+
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Radio cards */
+  .radio-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .radio-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: white;
+  }
+
+  .radio-card:hover { border-color: rgba(200,64,42,0.4); }
+
+  .radio-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .radio-card input { display: none; }
+
+  .radio-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .radio-card.selected .radio-dot {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+
+  .radio-dot::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .radio-card.selected .radio-dot::after { opacity: 1; }
+
+  .radio-text { flex: 1; }
+  .radio-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+  .radio-desc { font-size: 12px; color: var(--ink-faint); margin-top: 1px; }
+
+  .radio-lift {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--ok);
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Non-expansion notice */
+  .non-expansion-notice {
+    display: none;
+    background: #fff8e6;
+    border: 1.5px solid #e6c96a;
+    border-radius: 6px;
+    padding: 16px 20px;
+    font-size: 14px;
+    color: #7a5c00;
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  /* ============================================
+     BUTTONS
+  ============================================ */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--ink-muted);
+    border: 1.5px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-ghost:hover { border-color: var(--ink-muted); color: var(--ink); }
+
+  .btn-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  /* ============================================
+     DIVIDER
+  ============================================ */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ============================================
+     RESULTS
+  ============================================ */
+  .results-intro {
+    margin-bottom: 32px;
+  }
+
+  .results-intro h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+
+  .results-intro p {
+    font-size: 14px;
+    color: var(--ink-muted);
+  }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 28px;
+    letter-spacing: 0.01em;
+  }
+
+  .score-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .score-critical { background: var(--critical-light); color: var(--critical); }
+  .score-critical .score-dot { background: var(--critical); }
+  .score-high { background: var(--accent-light); color: var(--accent-dark); }
+  .score-high .score-dot { background: var(--accent); }
+  .score-medium { background: var(--warn-light); color: var(--warn); }
+  .score-medium .score-dot { background: var(--warn); }
+  .score-low { background: var(--ok-light); color: var(--ok); }
+  .score-low .score-dot { background: var(--ok); }
+
+  /* Metric cards */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  @media (max-width: 500px) { .metrics-grid { grid-template-columns: 1fr; } }
+
+  .metric-card {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card.highlight {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .metric-card.highlight-green {
+    border-color: var(--ok);
+    background: var(--ok-light);
+  }
+
+  .metric-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    line-height: 1;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .metric-card.highlight .metric-value { color: var(--accent-dark); }
+  .metric-card.highlight-green .metric-value { color: var(--ok); }
+
+  .metric-sub {
+    font-size: 12px;
+    color: var(--ink-faint);
+    line-height: 1.4;
+  }
+
+  /* Insight box */
+  .insight-box {
+    background: var(--ink);
+    color: white;
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+  }
+
+  .insight-box h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .insight-box p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.6;
+  }
+
+  .insight-box strong { color: white; font-weight: 600; }
+
+  /* Assumption table */
+  .assumptions {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+
+  .assumptions-header {
+    padding: 12px 20px;
+    background: var(--paper-warm);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .assumption-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .assumption-row:last-child { border-bottom: none; }
+  .assumption-key { color: var(--ink-muted); }
+  .assumption-val {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* Citations */
+  .citations {
+    margin-bottom: 28px;
+  }
+
+  .citations-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+
+  .citation-item {
+    font-size: 12px;
+    color: var(--ink-faint);
+    line-height: 1.5;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+
+  .citation-item:last-child { border-bottom: none; }
+
+  .citation-num {
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    flex-shrink: 0;
+    font-size: 11px;
+    margin-top: 1px;
+  }
+
+  /* ============================================
+     EMAIL CAPTURE
+  ============================================ */
+  .capture-card {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    margin-bottom: 28px;
+  }
+
+  .capture-card h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .capture-card p {
+    font-size: 14px;
+    color: var(--ink-muted);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .capture-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .capture-fields input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    background: var(--paper);
+    transition: border-color 0.15s;
+  }
+
+  .capture-fields input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: white;
+  }
+
+  .capture-fields input::placeholder { color: var(--ink-faint); }
+
+  .privacy-note {
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  /* Thank you state */
+  .thank-you {
+    text-align: center;
+    padding: 40px 24px;
+  }
+
+  .thank-you-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--ok-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 24px;
+  }
+
+  .thank-you h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .thank-you p {
+    font-size: 14px;
+    color: var(--ink-muted);
+    max-width: 400px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ============================================
+     FOOTER
+  ============================================ */
+  .footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--ink-faint);
+    line-height: 1.6;
+  }
+
+  /* ============================================
+     PROGRESS
+  ============================================ */
+  .progress-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 36px;
+  }
+
+  .progress-step {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--paper-warm);
+    transition: background 0.3s;
+  }
+
+  .progress-step.done { background: var(--accent); }
+  .progress-step.active { background: rgba(200,64,42,0.4); }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-eyebrow">Free Risk Assessment Tool</div>
+    <h1>How many of your members<br>could lose coverage under <em>HR1?</em></h1>
+    <p class="header-sub">Work requirements take effect January 2027 for ACA expansion adults. This tool estimates your plan's exposure — and what proactive outreach can recover.</p>
+    <div class="stat-bar">
+      <div class="stat-item">
+        <span class="stat-number">5.2M</span>
+        <span class="stat-label">Adults projected to lose Medicaid¹</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">95%</span>
+        <span class="stat-label">Already compliant — lost to paperwork²</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">Jan 2027</span>
+        <span class="stat-label">Federal implementation deadline</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-step active" id="step1"></div>
+    <div class="progress-step" id="step2"></div>
+    <div class="progress-step" id="step3"></div>
+  </div>
+
+  <!-- ============================================
+       SCREEN 1 — INPUTS
+  ============================================ -->
+  <div class="screen active" id="screen-inputs">
+
+    <div class="section-label">Step 1 of 2 — Your Plan Profile</div>
+
+    <div class="non-expansion-notice" id="nonExpansionNotice">
+      <strong>Your state has not expanded Medicaid.</strong> Federal HR1 work requirements apply only to ACA expansion adults. Your plan's direct exposure from work requirements is minimal — though 6-month redetermination cycles may still affect your administrative load if your state expands in the future.
+    </div>
+
+    <div class="field-group">
+
+      <div class="field">
+        <label for="stateSelect">State</label>
+        <select id="stateSelect" onchange="handleStateChange()">
+          <option value="">— Select your state —</option>
+          <option value="Alabama">Alabama (non-expansion)</option>
+          <option value="Alaska">Alaska</option>
+          <option value="Arizona">Arizona</option>
+          <option value="Arkansas">Arkansas</option>
+          <option value="California">California</option>
+          <option value="Colorado">Colorado</option>
+          <option value="Connecticut">Connecticut</option>
+          <option value="Delaware">Delaware</option>
+          <option value="Florida">Florida (non-expansion)</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Hawaii">Hawaii</option>
+          <option value="Idaho">Idaho</option>
+          <option value="Illinois">Illinois</option>
+          <option value="Indiana">Indiana</option>
+          <option value="Iowa">Iowa</option>
+          <option value="Kansas">Kansas (non-expansion)</option>
+          <option value="Kentucky">Kentucky</option>
+          <option value="Louisiana">Louisiana</option>
+          <option value="Maine">Maine</option>
+          <option value="Maryland">Maryland</option>
+          <option value="Massachusetts">Massachusetts</option>
+          <option value="Michigan">Michigan</option>
+          <option value="Minnesota">Minnesota</option>
+          <option value="Mississippi">Mississippi (non-expansion)</option>
+          <option value="Missouri">Missouri</option>
+          <option value="Montana">Montana</option>
+          <option value="Nebraska">Nebraska</option>
+          <option value="Nevada">Nevada</option>
+          <option value="New Hampshire">New Hampshire</option>
+          <option value="New Jersey">New Jersey</option>
+          <option value="New Mexico">New Mexico</option>
+          <option value="New York">New York</option>
+          <option value="North Carolina">North Carolina</option>
+          <option value="North Dakota">North Dakota</option>
+          <option value="Ohio">Ohio</option>
+          <option value="Oklahoma">Oklahoma</option>
+          <option value="Oregon">Oregon</option>
+          <option value="Pennsylvania">Pennsylvania</option>
+          <option value="Rhode Island">Rhode Island</option>
+          <option value="South Carolina">South Carolina (non-expansion)</option>
+          <option value="South Dakota">South Dakota</option>
+          <option value="Tennessee">Tennessee (non-expansion)</option>
+          <option value="Texas">Texas (non-expansion)</option>
+          <option value="Utah">Utah</option>
+          <option value="Vermont">Vermont</option>
+          <option value="Virginia">Virginia</option>
+          <option value="Washington">Washington</option>
+          <option value="West Virginia">West Virginia</option>
+          <option value="Wisconsin">Wisconsin</option>
+          <option value="Wyoming">Wyoming (non-expansion)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="totalMembers">Total Medicaid members</label>
+        <span class="field-hint">Enter your plan's current enrollment</span>
+        <input type="number" id="totalMembers" placeholder="e.g. 500000" min="1000" max="10000000">
+      </div>
+
+      <div class="field">
+        <label>ACA expansion adults as % of total membership</label>
+        <span class="field-hint">Adults 19–64 enrolled through Medicaid expansion. Typically 20–45% for pure Medicaid plans.</span>
+        <div class="slider-wrap">
+          <div class="slider-row">
+            <input type="range" id="expansionPct" min="5" max="60" value="30" oninput="updateSlider()">
+            <span class="slider-value" id="sliderDisplay">30%</span>
+          </div>
+          <div class="slider-labels"><span>5%</span><span>60%</span></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Does your plan use data matching to auto-identify exempt members?</label>
+        <span class="field-hint">E.g. cross-referencing payroll data, SNAP records, or other state databases to pre-clear members from reporting requirements.</span>
+        <select id="dataMatching">
+          <option value="yes">Yes — we use data matching</option>
+          <option value="no">No — members must self-report</option>
+          <option value="unsure">Unsure / not yet determined</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Primary outreach method for renewal / redetermination</label>
+        <div class="radio-cards" id="outreachCards">
+
+          <label class="radio-card" onclick="selectOutreach(this, 'mail')">
+            <input type="radio" name="outreach" value="mail">
+            <div class="radio-dot"></div>
+            <div class="radio-text">
+              <div class="radio-title">Mail only</div>
+              <div class="radio-desc">Letters and notices sent to address on file</div>
+            </div>
+            <span class="radio-lift">Baseline</span>
+          </label>
+
+          <label class="radio-card" onclick="selectOutreach(this, 'ivr')">
+            <input type="radio" name="outreach" value="ivr">
+            <div class="radio-dot"></div>
+            <div class="radio-text">
+              <div class="radio-title">IVR / Phone outreach</div>
+              <div class="radio-desc">Automated or agent-led phone calls</div>
+            </div>
+            <span class="radio-lift">+3% lift</span>
+          </label>
+
+          <label class="radio-card" onclick="selectOutreach(this, 'sms')">
+            <input type="radio" name="outreach" value="sms">
+            <div class="radio-dot"></div>
+            <div class="radio-text">
+              <div class="radio-title">SMS / Digital outreach</div>
+              <div class="radio-desc">Proactive text-based engagement, no portal login required</div>
+            </div>
+            <span class="radio-lift">+5% lift</span>
+          </label>
+
+          <label class="radio-card" onclick="selectOutreach(this, 'sms_agent')">
+            <input type="radio" name="outreach" value="sms_agent">
+            <div class="radio-dot"></div>
+            <div class="radio-text">
+              <div class="radio-title">SMS + Virtual agent (website)</div>
+              <div class="radio-desc">Proactive outreach plus an inbound AI agent to capture at-risk members navigating your site</div>
+            </div>
+            <span class="radio-lift">+10% lift</span>
+          </label>
+
+        </div>
+      </div>
+
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="calculate()">
+        Calculate my exposure
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <p id="formError" style="color:var(--accent);font-size:13px;margin-top:12px;display:none;">Please complete all fields before continuing.</p>
+
+  </div>
+
+  <!-- ============================================
+       SCREEN 2 — RESULTS
+  ============================================ -->
+  <div class="screen" id="screen-results">
+
+    <div class="section-label">Step 2 of 2 — Your Risk Profile</div>
+
+    <div class="results-intro">
+      <h2>Your HR1 Exposure Estimate</h2>
+      <p id="resultsSubhead">Based on your plan profile and current outreach approach.</p>
+    </div>
+
+    <div id="scoreBadge" class="score-badge score-critical">
+      <span class="score-dot"></span>
+      <span id="scoreText">Critical Risk</span>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card highlight">
+        <div class="metric-label">Members at risk</div>
+        <div class="metric-value" id="metAtRisk">—</div>
+        <div class="metric-sub">Expansion adults exposed to work requirement churn</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">Annual revenue exposure</div>
+        <div class="metric-value" id="metRevenue">—</div>
+        <div class="metric-sub">Capitation at risk based on state PMPM</div>
+      </div>
+      <div class="metric-card highlight-green">
+        <div class="metric-label">Recoverable members</div>
+        <div class="metric-value" id="metRecoverable">—</div>
+        <div class="metric-sub">Estimated members preserved with proactive outreach</div>
+      </div>
+      <div class="metric-card highlight-green">
+        <div class="metric-label">Revenue protected</div>
+        <div class="metric-value" id="metProtected">—</div>
+        <div class="metric-sub">Annual capitation protected through outreach lift</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3 id="insightHeadline">The paperwork problem</h3>
+      <p id="insightBody">Loading insight...</p>
+    </div>
+
+    <div class="assumptions">
+      <div class="assumptions-header">Calculation assumptions</div>
+      <div class="assumption-row">
+        <span class="assumption-key">State</span>
+        <span class="assumption-val" id="aState">—</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">Total members</span>
+        <span class="assumption-val" id="aTotalMembers">—</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">Expansion adult %</span>
+        <span class="assumption-val" id="aExpPct">—</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">Base loss rate (Urban Institute)</span>
+        <span class="assumption-val">34–39% of at-risk adults</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">Friction-driven loss (NEJM)</span>
+        <span class="assumption-val">~95% lose coverage due to paperwork</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">Data matching auto-exemption</span>
+        <span class="assumption-val" id="aDataMatch">—</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">Outreach method</span>
+        <span class="assumption-val" id="aOutreach">—</span>
+      </div>
+      <div class="assumption-row">
+        <span class="assumption-key">State PMPM (expansion adults)</span>
+        <span class="assumption-val" id="aPmpm">—</span>
+      </div>
+    </div>
+
+    <div class="citations">
+      <div class="citations-label">Sources</div>
+      <div class="citation-item">
+        <span class="citation-num">[1]</span>
+        <span>Karpman, Haley & Kenney. "Assessing Potential Coverage Losses among Medicaid Expansion Enrollees under a Federal Medicaid Work Requirement." Urban Institute / Robert Wood Johnson Foundation, March 2025.</span>
+      </div>
+      <div class="citation-item">
+        <span class="citation-num">[2]</span>
+        <span>Sommers et al. "Medicaid Work Requirements — Results from the First Year in Arkansas." <em>New England Journal of Medicine</em>, June 2019. Finding: >95% of targeted adults already met requirements or qualified for exemption.</span>
+      </div>
+      <div class="citation-item">
+        <span class="citation-num">[3]</span>
+        <span>KFF. "A Look at Variation in Medicaid Spending Per Enrollee by Group and Across States." October 2025. State PMPM proxies derived from CY2023 T-MSIS data for expansion adult population.</span>
+      </div>
+      <div class="citation-item">
+        <span class="citation-num">[4]</span>
+        <span>H.R. 1, "One Big Beautiful Bill Act," signed July 4, 2025. Work requirements apply to ACA expansion adults ages 19–64. State implementation required by January 1, 2027.</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="showCapture()">
+        Get your full risk report
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="btn-ghost" onclick="resetTool()">
+        ← Start over
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ============================================
+       SCREEN 3 — EMAIL CAPTURE
+  ============================================ -->
+  <div class="screen" id="screen-capture">
+
+    <div class="capture-card">
+      <h3>Get your detailed risk report</h3>
+      <p>We'll send a PDF summary of your plan's HR1 exposure estimate, including the full methodology and proactive outreach recommendations — no strings attached.</p>
+
+      <div class="capture-fields">
+        <input type="text" id="captureName" placeholder="Your name">
+        <input type="text" id="captureOrg" placeholder="Health plan name">
+        <input type="email" id="captureEmail" placeholder="Work email">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" onclick="submitCapture()">Send my report</button>
+        <button class="btn-ghost" onclick="skipCapture()">Skip — just show results</button>
+      </div>
+
+      <p class="privacy-note">Your information is used only to send this report. It will not be shared or used for marketing purposes without your consent.</p>
+    </div>
+
+    <div class="thank-you" id="thankYouState" style="display:none;">
+      <div class="thank-you-icon">✓</div>
+      <h3>Report on its way</h3>
+      <p>Thank you. Check your inbox shortly. In the meantime, you can review your full estimate on the previous screen.</p>
+      <br>
+      <button class="btn-ghost" onclick="showResults()">← Back to results</button>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    This tool provides estimates for planning purposes only. Results are based on published research and state-level benchmarks; actual plan experience will vary. Methodology and sources available upon request.
+  </footer>
+
+</div>
+
+<script>
+  // ============================================
+  // DATA CONFIG — UPDATE THIS SECTION ONLY
+  // ============================================
+  const CONFIG = {
+
+    // PMPM by state (expansion adults, derived from KFF/T-MSIS 2023 data)
+    pmpm: {
+      'California': 475,
+      'New York': 575,
+      'Illinois': 440,
+      'Arizona': 400,
+      'Colorado': 420,
+      'Michigan': 410,
+      'Washington': 450,
+      'Ohio': 390,
+      'Pennsylvania': 480,
+      'Massachusetts': 520,
+      'New Jersey': 500,
+      'Maryland': 470,
+      'Connecticut': 490,
+      'Minnesota': 510,
+      'Oregon': 430,
+      'Virginia': 415,
+      'North Carolina': 390,
+      'Louisiana': 370,
+      'Kentucky': 375,
+      'Arkansas': 355,
+      'Nevada': 395,
+      'New Mexico': 380,
+      'Hawaii': 430,
+      'Maine': 420,
+      'Montana': 390,
+      'Idaho': 370,
+      'Utah': 360,
+      'Nebraska': 385,
+      'Iowa': 380,
+      'Indiana': 385,
+      'Missouri': 375,
+      'South Dakota': 370,
+      'North Dakota': 480,
+      'Rhode Island': 460,
+      'Delaware': 455,
+      'Vermont': 450,
+      'West Virginia': 365,
+      'New Hampshire': 420,
+      'Alaska': 510,
+      'Oklahoma': 360,
+      'Georgia': 355,
+      'Wisconsin': 400,
+      // Default for states not listed
+      '_default': 410
+    },
+
+    // Non-expansion states (work requirements don't apply)
+    nonExpansion: ['Alabama','Florida','Kansas','Mississippi','South Carolina','Tennessee','Texas','Wyoming'],
+
+    // Member loss rate midpoint (Urban Institute: 34–39%)
+    lossRateMid: 0.365,
+
+    // Friction-driven loss % (NEJM Arkansas: >95%)
+    frictionRate: 0.95,
+
+    // Auto-exemption via data matching
+    autoExemptWithMatching: 0.50,
+    autoExemptWithout: 0.25,
+    autoExemptUnsure: 0.35,
+
+    // Outreach lift by method (% of exposed members recovered)
+    outreachLift: {
+      'mail': 0.00,
+      'ivr': 0.03,
+      'sms': 0.05,
+      'sms_agent': 0.10
+    },
+
+    outreachLabels: {
+      'mail': 'Mail only',
+      'ivr': 'IVR / Phone',
+      'sms': 'SMS / Digital',
+      'sms_agent': 'SMS + Virtual Agent'
+    }
+  };
+
+  // ============================================
+  // STATE
+  // ============================================
+  let selectedOutreach = null;
+  let results = {};
+
+  // ============================================
+  // HELPERS
+  // ============================================
+  function fmt(n) {
+    if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return '$' + Math.round(n/1000) + 'K';
+    return '$' + n;
+  }
+
+  function fmtNum(n) {
+    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return Math.round(n/1000) + 'K';
+    return n.toString();
+  }
+
+  function comma(n) {
+    return Math.round(n).toLocaleString();
+  }
+
+  function getPmpm(state) {
+    return CONFIG.pmpm[state] || CONFIG.pmpm['_default'];
+  }
+
+  function isNonExpansion(state) {
+    return CONFIG.nonExpansion.includes(state);
+  }
+
+  // ============================================
+  // UI INTERACTIONS
+  // ============================================
+  function updateSlider() {
+    const val = document.getElementById('expansionPct').value;
+    document.getElementById('sliderDisplay').textContent = val + '%';
+  }
+
+  function selectOutreach(el, val) {
+    document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedOutreach = val;
+  }
+
+  function handleStateChange() {
+    const state = document.getElementById('stateSelect').value;
+    const notice = document.getElementById('nonExpansionNotice');
+    if (state && isNonExpansion(state)) {
+      notice.style.display = 'block';
+    } else {
+      notice.style.display = 'none';
+    }
+  }
+
+  function setProgress(step) {
+    ['step1','step2','step3'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = 'progress-step' + (i < step - 1 ? ' done' : i === step - 1 ? ' active' : '');
+    });
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ============================================
+  // CALCULATE
+  // ============================================
+  function calculate() {
+    const state = document.getElementById('stateSelect').value;
+    const totalMembers = parseInt(document.getElementById('totalMembers').value);
+    const expansionPct = parseInt(document.getElementById('expansionPct').value) / 100;
+    const dataMatching = document.getElementById('dataMatching').value;
+
+    // Validation
+    if (!state || !totalMembers || !selectedOutreach) {
+      document.getElementById('formError').style.display = 'block';
+      return;
+    }
+    document.getElementById('formError').style.display = 'none';
+
+    const pmpm = getPmpm(state);
+    const nonExp = isNonExpansion(state);
+
+    // Core calc
+    const expansionAdults = totalMembers * expansionPct;
+    const atRisk = nonExp ? 0 : expansionAdults * CONFIG.lossRateMid;
+    const addressable = atRisk * CONFIG.frictionRate;
+
+    let autoExemptRate;
+    if (dataMatching === 'yes') autoExemptRate = CONFIG.autoExemptWithMatching;
+    else if (dataMatching === 'no') autoExemptRate = CONFIG.autoExemptWithout;
+    else autoExemptRate = CONFIG.autoExemptUnsure;
+
+    const exposed = addressable * (1 - autoExemptRate);
+    const lift = CONFIG.outreachLift[selectedOutreach];
+    const recoverable = exposed * lift;
+    const revenueAtRisk = atRisk * pmpm * 12;
+    const revenueProtected = recoverable * pmpm * 12;
+
+    // Outreach gap score
+    let score, scoreClass, scoreText;
+    if (nonExp) {
+      score = 'low'; scoreClass = 'score-low'; scoreText = 'Low Direct Exposure';
+    } else if (selectedOutreach === 'mail') {
+      score = 'critical'; scoreClass = 'score-critical'; scoreText = 'Critical Risk';
+    } else if (selectedOutreach === 'ivr') {
+      score = 'high'; scoreClass = 'score-high'; scoreText = 'High Risk';
+    } else if (selectedOutreach === 'sms') {
+      score = 'medium'; scoreClass = 'score-medium'; scoreText = 'Moderate Risk';
+    } else {
+      score = 'low'; scoreClass = 'score-low'; scoreText = 'Lower Risk';
+    }
+
+    results = {
+      state, totalMembers, expansionPct: expansionPct*100,
+      expansionAdults, atRisk, addressable, exposed,
+      recoverable, revenueAtRisk, revenueProtected,
+      pmpm, dataMatching, score, scoreClass, scoreText,
+      outreachLabel: CONFIG.outreachLabels[selectedOutreach],
+      nonExp
+    };
+
+    renderResults();
+    setProgress(2);
+    showScreen('results');
+  }
+
+  // ============================================
+  // RENDER RESULTS
+  // ============================================
+  function renderResults() {
+    const r = results;
+
+    // Score badge
+    const badge = document.getElementById('scoreBadge');
+    badge.className = 'score-badge ' + r.scoreClass;
+    document.getElementById('scoreText').textContent = r.scoreText + ' — ' + r.outreachLabel;
+
+    // Metrics
+    document.getElementById('metAtRisk').textContent = fmtNum(r.atRisk);
+    document.getElementById('metRevenue').textContent = fmt(r.revenueAtRisk);
+    document.getElementById('metRecoverable').textContent = fmtNum(r.recoverable);
+    document.getElementById('metProtected').textContent = fmt(r.revenueProtected);
+
+    // Subhead
+    document.getElementById('resultsSubhead').textContent =
+      r.state + ' · ' + comma(r.totalMembers) + ' members · ' + r.expansionPct + '% expansion adults';
+
+    // Insight
+    let headline, body;
+    if (r.nonExp) {
+      headline = 'Your state has not expanded Medicaid';
+      body = 'Federal work requirements under HR1 apply only to ACA expansion adults. Because ' + r.state + ' has not expanded Medicaid, your plan\'s direct exposure is minimal. However, administrative redetermination burdens and immigration status changes may still affect your member population.';
+    } else if (r.score === 'critical') {
+      headline = 'Mail-only outreach leaves most at-risk members unreached';
+      body = 'In Arkansas, <strong>95% of members who lost Medicaid already met the requirements or qualified for an exemption</strong> — they lost coverage because they couldn\'t navigate the paperwork. With mail-only outreach, most of your ' + fmtNum(r.atRisk) + ' at-risk members will never see or respond to a notice in time. Proactive digital outreach — particularly SMS and inbound virtual agents — is the highest-leverage intervention available before January 2027.';
+    } else if (r.score === 'high') {
+      headline = 'Phone outreach helps, but the channel gap remains';
+      body = 'IVR and phone-based outreach reaches some members, but completion rates are constrained by call aversion, language barriers, and inconvenient timing. The members most likely to fall through — those without reliable mail addresses, those who work variable hours, those navigating the system in a second language — are also least likely to complete a phone-based workflow. SMS-based outreach with no login required reduces that friction significantly.';
+    } else if (r.score === 'medium') {
+      headline = 'SMS outreach meaningfully reduces your exposure';
+      body = 'Proactive SMS outreach gets members into the enrollment process who would otherwise miss a mailed notice. Your estimated ' + fmtNum(r.recoverable) + ' recoverable members represent real people who are eligible, who want to stay covered, and who just need the right nudge in the right channel. Adding an inbound virtual agent captures the additional population that finds your website when they\'re confused or concerned — turning passive web traffic into completed enrollments.';
+    } else {
+      headline = 'You\'re in the strongest position available';
+      body = 'SMS outreach combined with an inbound virtual agent represents the highest-coverage model for HR1 compliance support. Members who receive proactive outreach via SMS and can get questions answered in real time — without being redirected to a portal or a call center — show meaningfully higher completion rates. Your estimated ' + fmtNum(r.recoverable) + ' recoverable members translate to ' + fmt(r.revenueProtected) + ' in protected annual capitation.';
+    }
+    document.getElementById('insightHeadline').textContent = headline;
+    document.getElementById('insightBody').innerHTML = body;
+
+    // Assumptions table
+    document.getElementById('aState').textContent = r.state;
+    document.getElementById('aTotalMembers').textContent = comma(r.totalMembers);
+    document.getElementById('aExpPct').textContent = r.expansionPct + '%  (' + comma(r.expansionAdults) + ' members)';
+    document.getElementById('aDataMatch').textContent = r.dataMatching === 'yes' ? '50% auto-exempted' : r.dataMatching === 'no' ? '25% auto-exempted' : '35% auto-exempted (unsure)';
+    document.getElementById('aOutreach').textContent = r.outreachLabel + ' (' + (CONFIG.outreachLift[selectedOutreach]*100) + '% recovery lift)';
+    document.getElementById('aPmpm').textContent = '$' + r.pmpm + '/member/month';
+  }
+
+  // ============================================
+  // CAPTURE / NAVIGATION
+  // ============================================
+  function showCapture() {
+    setProgress(3);
+    showScreen('capture');
+    document.getElementById('thankYouState').style.display = 'none';
+    document.querySelector('.capture-card').style.display = 'block';
+  }
+
+  function skipCapture() {
+    setProgress(2);
+    showScreen('results');
+  }
+
+  function showResults() {
+    setProgress(2);
+    showScreen('results');
+  }
+
+  function submitCapture() {
+    const name = document.getElementById('captureName').value.trim();
+    const org = document.getElementById('captureOrg').value.trim();
+    const email = document.getElementById('captureEmail').value.trim();
+
+    if (!email || !email.includes('@')) {
+      document.getElementById('captureEmail').style.borderColor = 'var(--accent)';
+      return;
+    }
+
+    // ── MAILCHIMP INTEGRATION ──────────────────────────
+    // Replace the action URL below with your Mailchimp
+    // embedded form action URL. Find it in:
+    // Mailchimp → Audience → Signup Forms → Embedded Forms
+    //
+    // const MAILCHIMP_URL = 'https://yourlist.us1.list-manage.com/subscribe/post?u=XXXX&id=XXXX';
+    //
+    // Example fetch call (uncomment when ready):
+    // fetch(MAILCHIMP_URL + '&EMAIL=' + encodeURIComponent(email) +
+    //   '&FNAME=' + encodeURIComponent(name) +
+    //   '&MMERGE3=' + encodeURIComponent(org) +
+    //   '&STATE=' + encodeURIComponent(results.state) +
+    //   '&MEMBERS=' + results.totalMembers +
+    //   '&ATRISK=' + Math.round(results.atRisk), { mode: 'no-cors' });
+    // ─────────────────────────────────────────────────
+
+    document.querySelector('.capture-card').style.display = 'none';
+    document.getElementById('thankYouState').style.display = 'block';
+  }
+
+  function resetTool() {
+    selectedOutreach = null;
+    results = {};
+    document.getElementById('stateSelect').value = '';
+    document.getElementById('totalMembers').value = '';
+    document.getElementById('expansionPct').value = 30;
+    document.getElementById('sliderDisplay').textContent = '30%';
+    document.getElementById('dataMatching').value = 'yes';
+    document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('nonExpansionNotice').style.display = 'none';
+    document.getElementById('formError').style.display = 'none';
+    setProgress(1);
+    showScreen('inputs');
+  }
+</script>
+</body>
+</html>
