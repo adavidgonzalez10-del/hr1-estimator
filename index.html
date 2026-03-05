@@ -592,6 +592,76 @@
   }
 
   /* ============================================
+     GAP ZONE
+  ============================================ */
+  .gap-zone {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    border: 1.5px solid #333;
+  }
+
+  .gap-zone-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #888;
+    margin-bottom: 16px;
+  }
+
+  .gap-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 500px) { .gap-metrics { grid-template-columns: 1fr; } }
+
+  .gap-metric {
+    background: #242424;
+    border-radius: 8px;
+    padding: 18px 20px;
+    border: 1px solid #333;
+  }
+
+  .gap-metric-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .gap-metric-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+
+  .gap-sentence {
+    font-size: 13px;
+    color: #aaa;
+    line-height: 1.6;
+    border-top: 1px solid #333;
+    padding-top: 16px;
+    margin-top: 4px;
+  }
+
+  .gap-zone.gap-zero {
+    background: #0d1f15;
+    border-color: #1a4028;
+  }
+
+  .gap-zone.gap-zero .gap-metric-value { color: #4caf50; }
+  .gap-zone.gap-zero .gap-sentence { color: #7ab88a; border-color: #1a4028; }
+  .gap-zone.gap-zero .gap-zone-label { color: #4caf50; }
+
+  /* ============================================
      CTA CARD
   ============================================ */
   .capture-card {
@@ -821,7 +891,7 @@
               <div class="radio-title">Mail only</div>
               <div class="radio-desc">Letters and notices sent to address on file</div>
             </div>
-            <span class="radio-lift">Baseline</span>
+            <span class="radio-lift">3% recovery</span>
           </label>
 
           <label class="radio-card" onclick="selectOutreach(this, 'ivr')">
@@ -831,7 +901,7 @@
               <div class="radio-title">IVR / Phone outreach</div>
               <div class="radio-desc">Automated or agent-led phone calls</div>
             </div>
-            <span class="radio-lift">+3% lift</span>
+            <span class="radio-lift">5% recovery</span>
           </label>
 
           <label class="radio-card" onclick="selectOutreach(this, 'sms')">
@@ -841,7 +911,7 @@
               <div class="radio-title">SMS / Digital outreach</div>
               <div class="radio-desc">Proactive text-based engagement, no portal login required</div>
             </div>
-            <span class="radio-lift">+5% lift</span>
+            <span class="radio-lift">10% recovery</span>
           </label>
 
           <label class="radio-card" onclick="selectOutreach(this, 'sms_agent')">
@@ -851,7 +921,7 @@
               <div class="radio-title">SMS + Virtual agent (website)</div>
               <div class="radio-desc">Proactive outreach plus an inbound AI agent to capture at-risk members navigating your site</div>
             </div>
-            <span class="radio-lift">+10% lift</span>
+            <span class="radio-lift">15% recovery</span>
           </label>
 
         </div>
@@ -915,6 +985,22 @@
       <p id="insightBody">Loading insight...</p>
     </div>
 
+    <!-- GAP ZONE -->
+    <div class="gap-zone" id="gapZone">
+      <div class="gap-zone-label" id="gapZoneLabel">What you're leaving unprotected</div>
+      <div class="gap-metrics">
+        <div class="gap-metric">
+          <div class="gap-metric-label">Members who could be recovered but won't be</div>
+          <div class="gap-metric-value" id="metGapMembers">—</div>
+        </div>
+        <div class="gap-metric">
+          <div class="gap-metric-label">Preventable revenue loss (annual)</div>
+          <div class="gap-metric-value" id="metGapRevenue">—</div>
+        </div>
+      </div>
+      <div class="gap-sentence" id="gapSentence"></div>
+    </div>
+
     <div class="assumptions">
       <div class="assumptions-header">Calculation assumptions</div>
       <div class="assumption-row">
@@ -973,7 +1059,7 @@
 
     <div class="btn-row">
       <button class="btn-primary" onclick="showCapture()">
-        Get your full risk report
+        Book a 20-minute walkthrough
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <button class="btn-ghost" onclick="resetTool()">
@@ -1080,11 +1166,12 @@
 
     // Outreach lift by method (% of exposed members recovered)
     outreachLift: {
-      'mail': 0.00,
-      'ivr': 0.03,
-      'sms': 0.05,
-      'sms_agent': 0.10
+      'mail': 0.03,
+      'ivr': 0.05,
+      'sms': 0.10,
+      'sms_agent': 0.15
     },
+    bestLift: 0.15, // SMS + Virtual Agent — always shown as ceiling
 
     outreachLabels: {
       'mail': 'Mail only',
@@ -1199,6 +1286,11 @@
     const revenueAtRisk = atRisk * pmpm * 12;
     const revenueProtected = recoverable * pmpm * 12;
 
+    // Gap calculation (vs. best possible: SMS + Virtual Agent)
+    const recoverableBest = exposed * CONFIG.bestLift;
+    const gapMembers = Math.max(0, recoverableBest - recoverable);
+    const gapRevenue = gapMembers * pmpm * 12;
+
     // Outreach gap score
     let score, scoreClass, scoreText;
     if (nonExp) {
@@ -1217,6 +1309,7 @@
       state, totalMembers, expansionPct: expansionPct*100,
       expansionAdults, atRisk, addressable, exposed,
       recoverable, revenueAtRisk, revenueProtected,
+      gapMembers, gapRevenue, recoverableBest,
       pmpm, dataMatching, score, scoreClass, scoreText,
       outreachLabel: CONFIG.outreachLabels[selectedOutreach],
       nonExp
@@ -1276,6 +1369,24 @@
     document.getElementById('aDataMatch').textContent = r.dataMatching === 'yes' ? '50% auto-exempted' : r.dataMatching === 'no' ? '25% auto-exempted' : '35% auto-exempted (unsure)';
     document.getElementById('aOutreach').textContent = r.outreachLabel + ' (' + (CONFIG.outreachLift[selectedOutreach]*100) + '% recovery lift)';
     document.getElementById('aPmpm').textContent = '$' + r.pmpm + '/member/month';
+
+    // Gap zone
+    const gapZone = document.getElementById('gapZone');
+    if (r.nonExp || selectedOutreach === 'sms_agent') {
+      gapZone.className = 'gap-zone gap-zero';
+      document.getElementById('gapZoneLabel').textContent = selectedOutreach === 'sms_agent' ? 'You\'re using the most effective method available' : 'No direct exposure in your state';
+      document.getElementById('metGapMembers').textContent = '0';
+      document.getElementById('metGapRevenue').textContent = '$0';
+      document.getElementById('gapSentence').innerHTML = selectedOutreach === 'sms_agent'
+        ? 'SMS outreach combined with a virtual agent represents the highest-recovery model available. Your plan is in the strongest position to protect members before January 2027.'
+        : 'Federal work requirements apply only to ACA expansion adults. ' + r.state + ' has not expanded Medicaid, so your direct HR1 exposure is minimal.';
+    } else {
+      gapZone.className = 'gap-zone';
+      document.getElementById('gapZoneLabel').textContent = 'What you\'re leaving unprotected';
+      document.getElementById('metGapMembers').textContent = fmtNum(r.gapMembers);
+      document.getElementById('metGapRevenue').textContent = fmt(r.gapRevenue);
+      document.getElementById('gapSentence').innerHTML = 'Plans using SMS + a virtual agent conservatively recover 15% more at-risk members than plans who rely on mail and phone outreach alone.';
+    }
   }
 
   // ============================================
